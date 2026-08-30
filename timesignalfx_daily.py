@@ -6,6 +6,7 @@ import html
 import json
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
 from dataclasses import asdict, dataclass
 from datetime import date, datetime, timedelta
@@ -163,11 +164,20 @@ def post_text(summary: Summary, brand: str, site_url: str = DEFAULT_SITE_URL) ->
     target = date.fromisoformat(summary.target_date)
     daily_record = record_text(summary.wins, summary.losses, summary.draws) if summary.trades else "確定取引なし"
     return "\n".join([
-        f"【{brand} 日次実績】{target:%Y/%m/%d}",
-        f"本日: {daily_record} / {signed_number(summary.daily_net_jpy, '円')} / {signed_number(summary.daily_pips, ' pips')}",
-        f"{target.month}月累計: {signed_number(summary.monthly_net_jpy, '円')} / {signed_number(summary.monthly_pips, ' pips')}",
-        f"実績: {site_url}",
-        "#FX #USDJPY #自動売買 #EA",
+        f"📊 {target.month}/{target.day} {brand} トレード結果",
+        "",
+        daily_record,
+        f"本日 {signed_number(summary.daily_net_jpy, '円')} / {signed_number(summary.daily_pips, ' pips')}",
+        "",
+        f"{target.month}月累計",
+        f"{signed_number(summary.monthly_net_jpy, '円')} / {signed_number(summary.monthly_pips, ' pips')}",
+        "",
+        "勝ちも負けも、毎営業日の確定実績を公開しています。",
+        "",
+        "過去の運用実績はこちら👇",
+        site_url,
+        "",
+        "#FX #USDJPY #EA",
     ])
 
 
@@ -224,7 +234,11 @@ def expected_site_strings(summary: Summary) -> list[str]:
 
 def verify_site_match(summary: Summary, site_url: str, timeout: int = 30) -> dict[str, object]:
     try:
-        request = urllib.request.Request(site_url, headers={"User-Agent": "TimeSignalFX-daily-verifier/1.0"})
+        parts = urllib.parse.urlsplit(site_url)
+        request_url = urllib.parse.urlunsplit(
+            (parts.scheme, parts.netloc, urllib.parse.quote(parts.path), parts.query, parts.fragment)
+        )
+        request = urllib.request.Request(request_url, headers={"User-Agent": "TimeSignalFX-daily-verifier/1.0"})
         with urllib.request.urlopen(request, timeout=timeout) as response:
             status = int(response.status)
             body = response.read().decode("utf-8", errors="replace")
@@ -292,6 +306,8 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> int:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     args = parse_args()
     weekend = args.date.weekday() >= 5
     summary = (

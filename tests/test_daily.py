@@ -1,5 +1,6 @@
 import sys
 import unittest
+import urllib.parse
 from datetime import date
 from pathlib import Path
 
@@ -42,6 +43,7 @@ class DailySummaryTests(unittest.TestCase):
         self.assertIn("+20.0 pips", text)
         self.assertIn("+2,950円", text)
         self.assertIn("+5,200円", text)
+        self.assertIn("過去の運用実績はこちら👇", text)
         self.assertIn("https://timesignalfx.com/実績/", text)
 
     def test_site_parity_fields_include_day_and_month_values(self):
@@ -58,6 +60,15 @@ class DailySummaryTests(unittest.TestCase):
         self.assertFalse(payload["eligible_to_post"])
         self.assertEqual("site_values_mismatch", payload["gate_reason"])
         self.assertIn("createPost", payload["request_body"]["query"])
+
+    def test_public_site_url_path_is_ascii_encodable(self):
+        url = "https://timesignalfx.com/実績/"
+        parts = urllib.parse.urlsplit(url)
+        request_url = urllib.parse.urlunsplit(
+            (parts.scheme, parts.netloc, urllib.parse.quote(parts.path), parts.query, parts.fragment)
+        )
+        self.assertEqual("https://timesignalfx.com/%E5%AE%9F%E7%B8%BE/", request_url)
+        request_url.encode("ascii")
 
 
 if __name__ == "__main__":
