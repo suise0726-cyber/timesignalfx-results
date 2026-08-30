@@ -2,6 +2,6 @@ __pycache__/
 *.pyc
 .env
 build/
+state/
 public/*.png
 !public/.gitkeep
-
